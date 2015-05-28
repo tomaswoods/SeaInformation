@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <link rel="stylesheet" href="../../../css/core.css" type="text/css" media="screen" charset="utf-8" />
+    <link rel="stylesheet" href="../../../css/menu.css" type="text/css" media="screen" charset="utf-8" />
+    <script type="text/javascript" src="http://js.arcgis.com/3.8compact"></script>
+    <script>
+        require(["dojo/data/ItemFileWriteStore", "dojox/grid/DataGrid", "dojox/widget/TitleGroup", "dijit/TitlePane", "dojox/timing", "dojo/domReady!"], function (ItemFileWriteStore, DataGrid, TitleGroup, TitlePane, timing) {
+            var buoyData = JSON.parse(window.localStorage.getItem('BuoyInfo'));
+            var hookBuoyinfo = buoyData["M5"];
+            var buoyStore = new ItemFileWriteStore({ data: hookBuoyinfo.store });
+            var buoyLayout = hookBuoyinfo.layout;
+            /*create a new grid*/
+            var tidegrid = new DataGrid({
+                id: 'tg-hookBuoygrid',
+                autoHeight: true,
+                autoWidth: true,
+                initialWidth: "100%",
+                store: buoyStore,
+                structure: buoyLayout
+            });
+            tidegrid.selection.clear();
+            tidegrid.selection.setSelected(0, true);
+            tidegrid.render();
+
+            tidegrid.placeAt("BuoyGrid");
+            tidegrid.startup();
+        });
+
+    </script>
+</head>
+<body id="menu-page" class="interior">
+    <div id="site">
+        <div id="page-content">
+            <div id="content">
+                <div class="header">
+                    <div class="left"><h2 class="menu" id="titletext">Hook Head Sea Information</h2></div>
+                    <div class="right"><a href="../hook.html" rel="return" class="home">Back</a></div>
+                    <div style="height:1px;clear:both;">&nbsp;</div>
+                </div>                  
+            </div>
+            <div id="BuoyGrid" style="width:100%;"></div>
+            <p class="copyright">Tomás Woods &copy; 2014, All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,550 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <link rel="stylesheet" href="css/core.css" type="text/css" media="screen" charset="utf-8" />
+    <link rel="stylesheet" href="css/menu.css" type="text/css" media="screen" charset="utf-8" />
+    <title>Coastal Information</title>
+    <style type="text/css">
+        body, html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #mapDiv {
+            height: 100%;
+            width: 100%;
+            margin: 0px;
+        }
+
+        .button {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            font-size: 0.98em;
+            margin: 0;
+            display: block;
+            color: #fff;
+            padding: 10px;
+            width: 100%;
+            border-color: #2b2b2b;
+            background: -webkit-gradient(linear, left top, left bottom, from(#2b2b2b), to(#5a5a5a), color-stop(0.5, #2b2b2b), color-stop(0.5, #2b2b2b));
+        }
+
+        .buttonSelected {
+            background: -webkit-gradient(linear, left top, left bottom, from(#131313), to(#313131), color-stop(0.5, #2b2b2b), color-stop(0.5, #2b2b2b));
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <div class="header">
+            <h2 class="menu">Irish Coastal Information</h2>
+            <div style="height:1px;clear:both;">&nbsp;</div>
+        </div>
+        
+    </div>
+    <div id="mapDiv"></div>
+    <button id="show" type="button"></button>
+    <!-- Load the library and CSS references for ArcGIS API for JavaScript -->
+    <link rel="stylesheet" type="text/css" href="http://js.arcgis.com/3.8/js/esri/css/esri.css">
+    
+    <script src="http://js.arcgis.com/3.8compact"></script>
+    <script type="text/javascript" src="phonegap.js"></script>
+    <script type="text/javascript">
+        var app = {
+            // Application Constructor
+            initialize: function () {
+                this.bindEvents();
+            },
+            // Bind Event Listeners
+            //
+            // Bind any events that are required on startup. Common events are:
+            // 'load', 'deviceready', 'offline', and 'online'.
+            bindEvents: function () {
+                document.addEventListener('deviceready', this.onDeviceReady, false);
+            },
+            // deviceready Event Handler
+            //
+            // The scope of 'this' is the event. In order to call the 'receivedEvent'
+            // function, we must explicity call 'app.receivedEvent(...);'
+            onDeviceReady: function () {
+               /* var networkState = navigator.network.connection.type;
+                var states = {};
+                states[Connection.UNKNOWN] = 'Unknown connection';
+                states[Connection.ETHERNET] = 'Ethernet connection';
+                states[Connection.WIFI] = 'WiFi connection';
+                states[Connection.CELL_2G] = 'Cell 2G connection';
+                states[Connection.CELL_3G] = 'Cell 3G connection';
+                states[Connection.CELL_4G] = 'Cell 4G connection';
+                states[Connection.NONE] = 'No network connection';
+                if (networkState == Connection.NONE) {                
+                    navigator.notification.alert('No internet connection', null, 'Connection Error', 'OK');
+                }
+                */
+                app.receivedEvent('deviceready');
+                
+            },
+            // Update DOM on a Received Event
+            receivedEvent: function (id) {
+                console.log('Cordova device ready event: ' + id);
+
+                require(["dojo/_base/lang", "dojo/dom", "dojo/dom-style", "dojo/dom-attr", "dojox/mobile/Button", "esri/renderers/SimpleRenderer", "esri/layers/GraphicsLayer", "esri/graphic", "esri/geometry/Point", "esri/symbols/PictureMarkerSymbol", "esri/map", "esri/geometry/Extent", "dojo/request/xhr", "dojo/DeferredList", "dojo/_base/Deferred", "dojo/date"],
+                        function (lang, dom, domStyle, domAttr, Button, SimpleRenderer, GraphicsLayer, Graphic, Point, PictureMarkerSymbol, Map, Extent, xhr, DeferredList, Deferred,date) {
+                            var initExtent = new Extent({ "xmin": -13.18359375, "ymin": 50.67427368164063, "xmax": -2.63671875, "ymax": 56.12898559570313, "spatialReference": { "wkid": 4326 } });
+                            var cameraLayer = new GraphicsLayer();
+                            var diveBoardsLayer = new GraphicsLayer({ visible: false });
+                            var openactivities = JSON.parse(window.localStorage.getItem('activities'));
+                            
+                            // Create map
+                            var map = new Map("mapDiv", {
+                                basemap: "oceans",
+                                extent: initExtent,
+                                logo:false
+                            });
+
+                            // Create a button to show activities nad click again to show webcams:
+                            var showButton = new Button({
+                                showLabel:true,
+                                label: "Show Activities",
+                                class: "button",
+                                onClick: function () {
+                                    var lbl = showButton.get("label");
+                                    if(lbl==="Show Activities")
+                                    {
+                                        cameraLayer.setVisibility(false);
+                                        diveBoardsLayer.setVisibility(true);
+                                        showButton.set("label", "Show Webcams");
+                                    }
+                                    else
+                                    {
+                                        cameraLayer.setVisibility(true);
+                                        diveBoardsLayer.setVisibility(false);
+                                        showButton.set("label", "Show Activities");
+                                    }
+                                }
+                            }, "show");
+
+                            if (openactivities !== null && openactivities === true) {
+                                cameraLayer.setVisibility(false);
+                                diveBoardsLayer.setVisibility(true);
+                                showButton.set("label", "Show Webcams");
+                            }
+
+                            map.on("load", maploaded);
+                            
+                            function maploaded() {
+                                try {
+                                    addActivityData();
+                                    var todaysDate = new Date();
+                                    var localstorage = window.localStorage.getItem('timeRetrieved');
+                                    var storeddate;
+                                    var diff;
+                                    var diffInHours;
+                                    if (!localstorage)
+                                    {
+                                        diffInHours = 2;
+                                    }
+                                    else {
+                                        storeddate = new Date(JSON.parse(window.localStorage.getItem('timeRetrieved')));
+                                        diff = todaysDate.valueOf() - storeddate.valueOf();
+                                        diffInHours = diff / 1000 / 60 / 60;
+                                    }
+                                    if (diffInHours > 1 || (typeof window.localStorage.getItem('TideInfo') === 'undefined' && window.localStorage.getItem('TideInfo') === null) || (typeof window.localStorage.getItem('BuoyInfo') === 'undefined' && window.localStorage.getItem('BuoyInfo') === null)) {
+                                        if (localstorage) {
+                                            window.localStorage.clear();
+                                        }
+                                        getData(todaysDate);
+                                    }
+                                    else {
+                                        addFeatures();
+                                    }
+                                }
+                                catch (err) {
+                                    console.log("Error" + err.message);
+                                }
+                            }
+                            function formatCoord(mapPoint) {
+                                var pnt = esri.geometry.webMercatorToGeographic(mapPoint);
+                                if (pnt === null || pnt === undefined)
+                                { return ""; }
+                                else {
+                                    var code = "<b>Lat:</b> " + Math.abs(pnt.y.toFixed(2)) + "&deg;" + ((pnt.y < 0.0) ? "S" : "N") + "&nbsp;&nbsp;<b>Lon:</b> " + Math.abs(pnt.x.toFixed(2)) + "&deg;" + ((pnt.x < 0.0) ? "W" : "E");
+                                    return code;
+                                }
+                            }
+
+                            function ordi(n) {
+                                var s = 'th';
+                                if (n === 1 || n == 21 || n == 31) { s = 'st'; }
+                                if (n === 2 || n == 22) { s = 'nd'; }
+                                if (n === 3 || n == 23) { s = 'rd'; }
+                                return n + s;
+                            }
+
+                            function degToCompass(degree) {
+                                if (!isNaN(degree) && degree !== null) {
+                                    var val = Math.round((degree / 22.5));
+                                    var arr = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+                                    return arr[val - 1];
+                                }
+                                else {
+                                    return "";
+                                }
+                            }
+                            function addActivityData() {
+                                try {
+                                    //Diving Locations
+                                    var tramoreDivePoint = new Point(-797604, 6826166, map.SpatialReference);
+                                    var tramoreDive = {
+                                        "geometry": {
+                                            "x": -797604, "y": 6826166,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Tramore",
+                                            "FormattedCoord": formatCoord(tramoreDivePoint)
+                                        }
+                                    };
+                                    var tramoreDive_gra = new Graphic(tramoreDive);
+
+                                    var salthillPoint = new Point(-1012134.224, 7030520.893, map.SpatialReference);
+                                    var salthillDive = {
+                                        "geometry": {
+                                            "x": -1012134.224, "y": 7030520.893,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Salthill",
+                                            "FormattedCoord": formatCoord(salthillPoint)
+                                        }
+                                    };
+                                    var salthillDive_gra = new Graphic(salthillDive);
+
+                                    var diveMarkerSymbol = new PictureMarkerSymbol("img/dive_symbol.png", 24, 24);
+                                    var diveRenderer = new SimpleRenderer(diveMarkerSymbol);
+                                    diveBoardsLayer.setRenderer(diveRenderer);
+                                    diveBoardsLayer.add(tramoreDive_gra);
+                                    diveBoardsLayer.add(salthillDive_gra);
+                                    map.addLayer(diveBoardsLayer);
+
+                                    diveBoardsLayer.on('click', function (e) {
+                                        window.localStorage.setItem('activities', JSON.stringify(true));
+                                        var gra = e.graphic;
+                                        var attributes = gra.attributes;
+                                        switch (attributes.Name) {
+                                            case "Tramore":
+                                                window.location.assign("activities/Tramore/info.html");
+                                                break;
+                                            case "Salthill":
+                                                window.location.assign("activities/Salthill/info.html");
+                                                break;
+                                        }
+                                    });
+
+                                }
+                                catch (err) {
+                                    console.log("Error: " + err.message);
+                                }
+                            }
+
+                            function getData(todaysDay) {
+                                try {
+                                    var todaysDay = date.add(todaysDay,"hour",-6);
+                                    var twoDigitMonth=((todaysDay.getMonth()+1)>=10)? (todaysDay.getMonth()+1) : '0' + (todaysDay.getMonth()+1);  
+                                    var twoDigitDate = ((todaysDay.getDate()) >= 10) ? (todaysDay.getDate()) : '0' + (todaysDay.getDate());
+                                    var twoDigitHours = ((todaysDay.getHours()) >= 10) ? (todaysDay.getHours()) : '0' + (todaysDay.getHours());
+
+                                    var defM1 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M1%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defM2 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M2%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defM3 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M3%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defM4 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M4%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defM5 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M5%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defM6 = xhr("http://erddap.marine.ie/erddap/tabledap/IWBNetwork.json?station_id,time,AtmosphericPressure,WindDirection,WindSpeed,Gust,WaveHeight,WavePeriod,MeanWaveDirection,Hmax,AirTemperature,DewPoint,SeaTemperature,salinity,RelativeHumidity,QC_Flag,longitude,latitude&station_id=%22M6%22&time%3E=" + todaysDay.getFullYear() + "-" + twoDigitMonth + "-" + twoDigitDate + "T" + twoDigitHours + ":00:00Z", {
+                                        handleAs: "json"
+                                    });
+                                    var defFethard = xhr("http://www.tidetimes.co.uk/rss/fethard-on-sea-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defBaginbun = xhr("http://www.tidetimes.co.uk/rss/baginbun-head-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defDunmore = xhr("http://www.tidetimes.co.uk/rss/dunmore-east-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defDungarvan = xhr("http://www.tidetimes.co.uk/rss/dungarvan-harbour-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defLiscannor = xhr("http://www.tidetimes.co.uk/rss/liscannor-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defClonakilty = xhr("http://www.tidetimes.co.uk/rss/clonakilty-bay-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defCourtmacsherry = xhr("http://www.tidetimes.co.uk/rss/courtmacsherry-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defDunlaoghaire = xhr("http://www.tidetimes.co.uk/rss/dun-laoghaire-tide-times", {
+                                        handleAs: "xml"
+                                    });
+                                    var defwebcams = xhr("http://www.tomaswoods.ie/MarineServices/webcams.json", {
+                                        handleAs: "json"
+                                    });
+
+                                    var dl = new DeferredList([defM1, defM2, defM3, defM4, defM5, defM6, defFethard, defBaginbun, defDunmore, defDungarvan, defLiscannor, defClonakilty, defCourtmacsherry, defDunlaoghaire, defwebcams]);
+                                    dl.then(function (results) {
+                                        //Buoy Data
+                                        var Buoys = new Object();
+                                        var latestBuoys = new Object();
+                                        for (var i = 0; i < 6; i++) 
+                                        {
+                                            var result = results[i];
+                                            if (result[0]) 
+                                            {
+                                                var tbl = result[1].table;
+                                                var rows = tbl.rows;
+                                                var columnNames = tbl.columnNames;
+                                                var columnUnits = tbl.columnUnits;
+                                                /*set up layout*/
+                                                var layoutObj = [[
+                                                  { 'name': 'Time', 'field': 'time', 'width': '28%' },
+                                                  { 'name': 'Wind Spd.', 'field': 'windSpeed', 'width': '20%' },
+                                                  { 'name': 'Wind Dir', 'field': 'windDirection', 'width': '14%' },
+                                                  { 'name': 'Sea Temp', 'field': 'SeaTemp', 'width': '16%' },
+                                                  { 'name': 'Air Temp', 'field': 'AirTemp', 'width': '16%' }
+                                                ]];
+                                                /*set up data store*/
+                                                var dataStore = {
+                                                    identifier: "id",
+                                                    items: []
+                                                };
+                                                var buoyname ="";
+                                                var latestreadings = {};
+                                                var count = 0;
+                                                for (var k = rows.length - 1; k >= 0; k--) {
+                                                    var info = rows[k];                                                    
+                                                    var windspeed = Number(info[4]).toFixed(2).toString();
+                                                    var seatemp = Number(info[12]).toFixed(2).toString();
+                                                    var airtemp = Number(info[10]).toFixed(2).toString();
+                                                    var d = info[1].substr(0, info[1].indexOf("T"));
+                                                    var dProp = d.split("-");
+                                                    var t = info[1].substr(info[1].indexOf("T") + 1, info[1].indexOf("Z"));
+                                                    var tProp = t.split(":");
+                                                    var newDate = dProp[2] + "/" + dProp[1] + "/" + dProp[0] + " " + tProp[0] + ":" + tProp[1];
+                                                    if (k == rows.length - 1)
+                                                    {
+                                                        latestreadings= {time: newDate,"windspeed":windspeed+ "kn","seatemp":seatemp + "°C" ,"airtemp": airtemp + "°C" ,"winddirection": degToCompass(info[3])}
+                                                    }
+                                                    if(buoyname==""){buoyname = info[0];}
+                                                    dataStore.items.push(lang.mixin({ id: count }, { time: newDate, windSpeed: windspeed + "kn", windDirection: degToCompass(info[3]), SeaTemp: seatemp + "°C", AirTemp: airtemp + "°C" }));
+                                                    count++;
+                                                }
+                                                Buoys[buoyname] = { store: dataStore, layout: layoutObj };
+                                                latestBuoys[buoyname] = latestreadings;
+                                            }
+                                        }
+
+                                        //Tide Date
+                                        var Tides = new Object();
+                                        for (var j = 6; j < 14; j++) {
+                                            var tideresult = results[j];
+                                            if (tideresult[0]) {
+                                                var xmlDoc = tideresult[1];
+                                                var node = xmlDoc.getElementsByTagName("channel").item(0);
+
+                                                if (node == null) {
+                                                    console.debug("XML format is corrupted ...");
+                                                    return;
+                                                }
+                                                var title = node.getElementsByTagName('title').item(0).firstChild.data;
+                                                title = title.replace(/ /g, '');
+                                                title = title.replace('TideTimes', '');
+                                                title = title.replace('tidetimes', '');
+                                                var entry = node.getElementsByTagName('item').item(0);
+                                                var description = entry.getElementsByTagName('description').item(0).firstChild.data;
+                                                var truncatedDesc = description.substr(description.indexOf("<br/>") + 5);
+                                                var tideinfo = truncatedDesc.split("<br/>");
+                                                tideinfo.pop();
+                                                var test = "";
+                                                Tides[title] = tideinfo;
+                                            }
+                                        }
+                                        window.localStorage.setItem('TodaysDate', getFormatteddate());                                        
+                                        window.localStorage.setItem('TideInfo', JSON.stringify(Tides));
+                                        window.localStorage.setItem('BuoyInfo', JSON.stringify(Buoys));
+                                        window.localStorage.setItem('LatestBuoyInfo', JSON.stringify(latestBuoys));                                        
+                                        var d = new Date();
+                                        window.localStorage.setItem('timeRetrieved', JSON.stringify(d));
+                                        addFeatures();
+
+                                        //Handle webcams
+                                        var webcamresult = results[14];
+                                        if (webcamresult[0])
+                                        {
+                                            var webcams = webcamresult[1];
+                                            window.localStorage.setItem('Webcams', JSON.stringify(webcams));
+                                        }
+                                        else
+                                        {
+                                            //navigator.notification.alert('Could not retrieve webcam data', null, 'Data error', 'OK');
+                                        }
+                                    });
+                                }
+                                catch (err) {
+                                    console.log("Error: " + err.message);
+                                }
+                            }
+
+                            function getFormatteddate() {
+                                var m_names = new Array("January", "February", "March",
+                                "April", "May", "June", "July", "August", "September",
+                                "October", "November", "December");
+
+                                var d = new Date();
+                                var curr_date = d.getDate();
+                                var sup = "";
+                                if (curr_date == 1 || curr_date == 21 || curr_date == 31) {
+                                    sup = "st";
+                                }
+                                else if (curr_date == 2 || curr_date == 22) {
+                                    sup = "nd";
+                                }
+                                else if (curr_date == 3 || curr_date == 23) {
+                                    sup = "rd";
+                                }
+                                else {
+                                    sup = "th";
+                                }
+
+                                var curr_month = d.getMonth();
+                                var curr_year = d.getFullYear();
+
+                                return curr_date + "<SUP>" + sup + "</SUP> " + m_names[curr_month] + " " + curr_year;
+                            }
+
+                            function addFeatures() {
+                                try {                                    
+                                    console.log("Adding features");
+                                    // Create camera Graphics
+                                    var dunlaoighrepoint = new Point(-683308.8143553624, 7037994.615608479, map.SpatialReference);
+                                    var dunlaoighre_Camera = {
+                                        "geometry": {
+                                            "x": -683308.8143553624, "y": 7037994.615608479,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Dun Laoighre",
+                                            "FormattedCoord": formatCoord(dunlaoighrepoint)
+                                        }
+                                    };
+                                    var dunlaoighreCam = new Graphic(dunlaoighre_Camera);
+
+                                    var hookpoint = new Point(-771851.5569952583, 6823562.625331242, map.SpatialReference);
+                                    var hook_Camera = {
+                                        "geometry": {
+                                            "x": -771851.5569952583, "y": 6823562.625331242,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Hook",
+                                            "FormattedCoord": formatCoord(hookpoint)
+                                        }
+                                    };
+
+                                    var inchypoint = new Point(-986410.2953914723, 6727438.882112778, map.SpatialReference);
+                                    var inchy_Camera = {
+                                        "geometry": {
+                                            "x": -986410.2953914723, "y": 6727438.882112778,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Inchydoney",
+                                            "FormattedCoord": formatCoord(inchypoint)
+                                        }
+                                    };
+                                    
+                                    var inchyCam = new Graphic(inchy_Camera);
+
+                                    var lahinchpoint = new Point(-1040580.2618742903, 6969810.248429998, map.SpatialReference);
+                                    var lahinch_Camera = {
+                                        "geometry": {
+                                            "x": -1040580.2618742903, "y": 6969810.248429998,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Lahinch",
+                                            "FormattedCoord": formatCoord(lahinchpoint)
+                                        }
+                                    };
+                                    var lahinchCam = new Graphic(lahinch_Camera);
+
+                                    var coolmainpoint = new Point(-966412.4578664717, 6736193.758381657, map.SpatialReference);
+                                    var coolmain_Camera = {
+                                        "geometry": {
+                                            "x": -966412.4578664717, "y": 6736193.758381657,
+                                            "spatialReference": map.spatialReference
+                                        }, "attributes": {
+                                            "Name": "Coolmain",
+                                            "FormattedCoord": formatCoord(coolmainpoint)
+                                        }
+                                    };
+                                    var coolmainCam = new Graphic(coolmain_Camera);
+
+                                    var cameraMarkerSymbol = new PictureMarkerSymbol("img/camera.png", 24, 24);
+                                    var hookCam = new Graphic(hook_Camera);
+                                    var cameraRenderer = new SimpleRenderer(cameraMarkerSymbol);
+                                    
+                                    cameraLayer.setRenderer(cameraRenderer);
+
+                                    cameraLayer.add(hookCam);
+                                    cameraLayer.add(inchyCam);
+                                    cameraLayer.add(lahinchCam);
+                                    cameraLayer.add(coolmainCam);
+                                    cameraLayer.add(dunlaoighreCam);
+                                    map.addLayer(cameraLayer);
+                                    cameraLayer.on('click', function (e) {
+                                        window.localStorage.setItem('activities', JSON.stringify(false));
+                                        var gra = e.graphic;
+                                        var attributes = gra.attributes;
+                                        switch (attributes.Name) {
+                                            case "Hook":
+                                                window.location.assign("locations/Hook/hook.html");
+                                                break;
+                                            case "Lahinch":
+                                                window.location.assign("locations/Lahinch/lahinch.html");
+                                                break;
+                                            case "Inchydoney":
+                                                window.location.assign("locations/Inchydoney/inchydoney.html");
+                                                break;
+                                            case "Dun Laoighre":
+                                                window.location.assign("locations/DunLaoghaire/dunlaoghaire.html");
+                                                break;
+                                            case "Coolmain":
+                                                window.location.assign("locations/Coolmain/coolmain.html");
+                                                break;
+                                        }
+                                    });
+                                    //navigator.notification.activityStop();
+                                }
+                                catch (err) {
+                                    console.log("Error: " + err.message);
+                                   //navigator.notification.activityStop();
+                                }
+                            }
+                        }
+                );
+            }
+        };
+
+        app.initialize();
+
+    </script>
+</body>
+</html>

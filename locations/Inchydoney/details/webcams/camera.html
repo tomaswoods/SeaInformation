@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Inchydoney Webcam</title>
+    <link rel="stylesheet" href="../../../../css/core.css" type="text/css" media="screen" charset="utf-8" />
+    <link rel="stylesheet" href="../../../../css/menu.css" type="text/css" media="screen" charset="utf-8" />
+    <style>
+        img{
+            width: 100%;
+            height: 100%;
+        }
+
+    </style>
+    <script type="text/javascript" src="http://js.arcgis.com/3.8compact"></script>
+    <script>
+    require(["dojo/dom-attr", "dojo/dom-construct", "dojo/dom", "dojox/timing", "dojo/_base/lang", "dojo/on", "dojo/domReady!"], function (domAttr, domConstruct, dom, timing, lang, on) {
+        var webcamdata = JSON.parse(window.localStorage.getItem('Webcams'));
+        var cameras = webcamdata["Inchydoney"];
+        var camera = cameras[0];
+        var t = new dojox.timing.Timer(5000);
+        var img = dom.byId("inchydoneywebcam");
+
+        var signal = on(img, "error", function (event) {
+            domConstruct.place("<div id='warning'>Webcam image failed to load. The web camera may be down temporarily. Please try again later... </div>", "content", "last");
+            signal.remove();
+        });
+
+        if (domAttr.has("inchydoneywebcam", "src")) {
+            t.onTick = function () {
+                var imgsrc = camera + "?" + new Date();
+                domAttr.set("inchydoneywebcam", "src", imgsrc);
+            }
+            t.start();
+        }
+    });
+
+    </script>
+</head>
+<body id="menu-page" class="interior">
+    <div id="site">
+        <div id="page-content">
+            <div id="content">
+                <div class="header">
+                    <div class="left"><h2 class="menu" id="titletext">Inchydoney Webcam</h2></div>
+                    <div class="right"><a href="../../inchydoney.html" rel="return" class="home">Back</a></div>
+                    <div style="height:1px;clear:both;">&nbsp;</div>
+                </div>
+                <img id="inchydoneywebcam" class="webcam" src="../../../../img/ajax-loader.gif" />
+            </div>
+            <p class="copyright">Tomás Woods &copy; 2014, All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

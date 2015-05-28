@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <title>Dun Laoighre Harbour Sea Info</title>
+    <meta name="keywords" content="" />
+    <meta name="description" content="" />
+    <meta name="copyright" content="Tomas Woods &copy; 2014, All right reserved." />
+    <link rel="stylesheet" href="../../css/core.css" type="text/css" media="screen" charset="utf-8" />
+    <link rel="stylesheet" href="../../css/menu.css" type="text/css" media="screen" charset="utf-8" />
+    <script type="text/javascript" src="http://js.arcgis.com/3.8compact"></script>
+    <script>
+        require(["dojo/html", "dojo/date", "dojo/dom", "dojo/domReady!"],
+        function (html, date, dom) {
+            var todaysDate = window.localStorage.getItem('TodaysDate');
+            var tideData = JSON.parse(window.localStorage.getItem('TideInfo'));
+            var dunlaoighreTideinfo = tideData["DunLaoghaire"];
+            var latestbuoydata = JSON.parse(window.localStorage.getItem('LatestBuoyInfo'));
+            var dunlaoighreLatestBuoy = latestbuoydata["M5"];
+            html.set(dom.byId("titletext"), "Dun Laoighre: " + todaysDate);
+            if (dunlaoighreTideinfo && dunlaoighreTideinfo.length > 2) {
+                html.set(dom.byId("tide1"), dunlaoighreTideinfo[0]);
+                html.set(dom.byId("tide2"), dunlaoighreTideinfo[1]);
+                html.set(dom.byId("tide3"), dunlaoighreTideinfo[2]);
+                if (dunlaoighreTideinfo.length == 4) {
+                    html.set(dom.byId("tide4"), dunlaoighreTideinfo[3]);
+                }
+            }
+            if (dunlaoighreLatestBuoy) {
+                html.set(dom.byId("seatemp"), "Sea Temp: " + dunlaoighreLatestBuoy.seatemp);
+                html.set(dom.byId("airtemp"), "Air Temp: " + dunlaoighreLatestBuoy.airtemp);
+                html.set(dom.byId("windspeed"), "Wind Spd: " + dunlaoighreLatestBuoy.windspeed);
+                html.set(dom.byId("winddirection"), "Wind Dir: " + dunlaoighreLatestBuoy.winddirection);
+            }
+        });
+    </script>
+
+</head>
+<body id="menu-page" class="interior">
+    <div id="site">
+        <div id="page-content">
+            <div id="content">                
+                    <div class="header">
+                        <div class="left"><h2 class="menu" id="titletext"></h2></div>
+                        <div class="right"><a href="../../index.html" rel="return" class="home">Back</a></div>
+                        <div style="height:1px;clear:both;">&nbsp;</div>
+                    </div>
+                    <div class="tidepanel">
+                        <h3 class="menu" id="titletext">Tide Info <a class="viewmore" href="details/buoyinfo.html">(view more >>) </a></h3>
+                        <div class="row">
+                            <div id="seatemp" class="buoyinfo">&nbsp;</div>
+                            <div id="airtemp" class="buoyinfo">&nbsp;</div>
+                        </div>
+                        <div class="row">
+                            <div id="windspeed" class="buoyinfo">&nbsp;</div>
+                            <div id="winddirection" class="buoyinfo">&nbsp;</div>
+                        </div>
+                        <div style="height:1px;clear:both;">&nbsp;</div>
+                        <h3 class="menu" id="titletext">Tide Times</h3>
+                        <div class="row">
+                            <div id="tide1" class="tideinfo">&nbsp;</div>
+                            <div id="tide2" class="tideinfo">&nbsp;</div>
+                        </div>
+                        <div class="row">
+                            <div id="tide3" class="tideinfo">&nbsp;</div>
+                            <div id="tide4" class="tideinfo">&nbsp;</div>
+                        </div>
+                        <div style="height:1px;clear:both;">&nbsp;</div>
+                        <h3 class="menu" id="titletext">Web Cameras</h3>
+                        <div class="row">
+                            <div id="tide1" class="tideinfo"><a href="details/webcams/camera1.html">Webcam 1 >> </a></div>
+                            <div id="tide2" class="tideinfo"><a href="details/webcams/camera2.html">Webcam 2 >> </a></div>
+                        </div>
+                        <div style="height:1px;clear:both;">&nbsp;</div>
+                    </div>
+                </div>
+            <p class="copyright">Tomás Woods &copy; 2014, All rights reserved.</p>
+        </div>
+    </div>
+
+</body>
+</html>
